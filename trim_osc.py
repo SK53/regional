@@ -36,6 +36,7 @@ def box(x1,y1,x2,y2):
 	return Polygon([(x1,y1), (x2,y1), (x2,y2), (x1,y2)])
 
 default_user = getpass.getuser()
+default_prefix = 'planet_osm'
 
 parser = argparse.ArgumentParser(description='Trim osmChange file to a polygon and a database data')
 parser.add_argument('osc', type=argparse.FileType('r'), help='input osc file, "-" for stdin')
@@ -49,6 +50,7 @@ parser.add_argument('-p', '--poly', type=argparse.FileType('r'), help='osmosis p
 parser.add_argument('-b', '--bbox', nargs=4, type=float, metavar=('Xmin', 'Ymin', 'Xmax', 'Ymax'), help='Bounding box')
 parser.add_argument('-z', '--gzip', action='store_true', help='source and output files are gzipped')
 parser.add_argument('-v', dest='verbose', action='store_true', help='display debug information')
+parser.add_argument('--pre', dest='default_prefix', action='store_true', help='prefix for osm2pgsql tables, default planet_osm')
 options = parser.parse_args()
 
 # read poly
@@ -95,7 +97,7 @@ for node in root.iter('node'):
 			nodesM.append(long(node.get('id')))
 
 # Save modified nodes that are already in the database
-cur.execute('select id from planet_osm_nodes where id = ANY(%s);', (nodesM,))
+cur.execute('select id from ' + default_prefix + 'nodes where id = ANY(%s);', (nodesM,))
 for row in cur:
 	nodes[str(row[0])] = True
 
@@ -124,7 +126,7 @@ for way in root.iter('way'):
 			if way.getparent().tag == 'modify':
 				waysM.append(wayId)
 
-cur.execute('select id from planet_osm_ways where id = ANY(%s);', (waysM,))
+cur.execute('select id from' + default_prefix + '_ways where id = ANY(%s);', (waysM,))
 for row in cur:
 	ways.remove(row[0])
 	# iterate over osmChange/<mode>/way[id=<id>]/nd and set nodes[ref] to True
@@ -138,7 +140,7 @@ for rel in root.iter('relation'):
 	if rel.getparent().tag == 'modify':
 		relations.append(int(rel.get('id')))
 
-cur.execute('select id from planet_osm_rels where id = ANY(%s);', (relations,))
+cur.execute('select id from ' + default_prefix + '_rels where id = ANY(%s);', (relations,))
 for row in cur:
 	relations.remove(row[0])
 
